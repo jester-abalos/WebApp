@@ -1,32 +1,49 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Image } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { auth, db } from './firebase'; // Adjust the path as necessary
+import { createUserWithEmailAndPassword } from 'firebase/auth'; // Correct import
+import { doc, setDoc } from 'firebase/firestore';
 
 const SignupScreen = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [email, setEmail] = useState('');
- 
 
   const navigation = useNavigation();
 
-  const handleSignup = () => {
-    console.log({
-      password,
-      confirmPassword,
-      email,
-    });
-    navigation.navigate('Login');
+  const handleSignup = async () => {
+    if (password !== confirmPassword) {
+      console.error("Passwords do not match");
+      return; // Optionally show an alert to the user
+    }
+
+    try {
+      // Create user with email and password
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // Save user data to Firestore
+      await setDoc(doc(db, 'users', user.uid), {
+        username: username,
+        email: email,
+        createdAt: new Date(),
+      });
+
+      console.log("User  signed up and data saved:", user);
+      // Navigate to the login screen after successful registration
+      navigation.navigate('Login'); // Ensure 'Login' is the correct name of your login screen
+    } catch (error) {
+      console.error("Error signing up: ", error.message); // Log the error message
+    }
   };
 
   return (
     <View style={styles.container}>
       {/* Fixed Header */}
       <View style={styles.navbarContainer}>
-        {/* Row with Back Arrow and Header */}
         <View style={styles.headerRow}>
-          
           <Text style={styles.headerText}>Create Account.</Text>
         </View>
       </View>
@@ -34,7 +51,14 @@ const SignupScreen = () => {
       {/* Scrollable Form */}
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.formContainer}>
-         
+          <TextInput
+            style={styles.input}
+            placeholder="Username"
+            placeholderTextColor="#666680" 
+            value={username}
+            onChangeText={setUsername}
+          />
+          
           <TextInput
             style={styles.input}
             placeholder="Email"
@@ -60,12 +84,6 @@ const SignupScreen = () => {
             value={confirmPassword}
             onChangeText={setConfirmPassword}
           />
-          
-          
-          
-          
-          
-          
           
           <TouchableOpacity style={styles.button} onPress={handleSignup}>
             <Text style={styles.buttonText}>REGISTER</Text>

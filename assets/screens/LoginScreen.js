@@ -47,7 +47,7 @@ function LoginScreen() {
         {/* Log In Button */}
         <Pressable
           style={({ pressed }) => [styles.loginButton, pressed && styles.loginButtonPressed]}
-          onPress={() => navigation.navigate('Home')}
+          onPress={() => navigation.navigate('Dashboard')}
         >
           <Text style={styles.loginButtonText}>Log In</Text>
         </Pressable>

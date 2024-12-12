@@ -47,7 +47,7 @@ function EmailScreen() {
         {/* Log In Button */}
         <Pressable
           style={({ pressed }) => [styles.loginButton, pressed && styles.loginButtonPressed]}
-          onPress={() => navigation.navigate('            ')}
+          onPress={() => navigation.navigate('Dashboard')}
         >
           <Text style={styles.loginButtonText}>Get started with Email</Text>
         </Pressable>
@@ -61,7 +61,7 @@ function EmailScreen() {
         {/* Create Account Button */}
         <Pressable
           style={({ pressed }) => [styles.createButton, pressed && styles.createButtonPressed]}
-          onPress={() => navigation.navigate('Login')}
+          onPress={() => navigation.navigate('dashboard')}
         >
           <Text style={styles.createButtonText}>Signin</Text>
         </Pressable>

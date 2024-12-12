@@ -1,11 +1,81 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView,  Image } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons'; // Ensure to install react-native-vector-icons
-import { useNavigation } from '@react-navigation/native';
-
-
+import { getDatabase, ref, set, onValue } from 'firebase/database';
+import { database } from '../../firebaseConfig'; // Ensure the path is correct
 
 const DashboardScreen = ({ navigation }) => {
+  const [lightsOn, setLightsOn] = useState(false); // State to track the light status
+  const [motionStatus, setMotionStatus] = useState(""); // State to track motion sensor status
+  const [temperature, setTemperature] = useState(null); // State to store temperature
+  const [humidity, setHumidity] = useState(null); // State to store humidity
+
+  // Function to toggle light status and update in Firebase
+  const toggleLights = () => {
+    const newStatus = !lightsOn; // Toggle light status
+    setLightsOn(newStatus); // Update local state
+
+    // Get a reference to the Firebase Realtime Database path for the light control
+    const lightsRef = ref(database, 'control/led'); // Reference to control/led path in Firebase
+    
+    // Write the new light status to the Firebase database
+    set(lightsRef, newStatus)
+      .then(() => {
+        console.log('Light status updated successfully!');
+      })
+      .catch((error) => {
+        console.error('Error updating light status:', error);
+      });
+  };
+
+  // Fetch data from Firebase (lights, motion, temperature, and humidity) when component mounts
+  useEffect(() => {
+    const lightsRef = ref(database, 'control/led'); // Reference to the 'led' path in Firebase
+    const motionRef = ref(database, 'motion/status'); // Reference to the 'motion/status' path in Firebase
+    const tempRef = ref(database, 'sensorReading/temperature'); // Reference to the 'temperature' path in Firebase
+    const humidityRef = ref(database, 'sensorReading/humidity'); // Reference to the 'humidity' path in Firebase
+    
+    // Listen for changes in the 'led' value
+    const lightsUnsubscribe = onValue(lightsRef, (snapshot) => {
+      const newStatus = snapshot.val();
+      if (newStatus !== null) {
+        setLightsOn(newStatus); // Update state with the value from Firebase
+      }
+    });
+
+    // Listen for changes in the 'motion/status' value
+    const motionUnsubscribe = onValue(motionRef, (snapshot) => {
+      const newMotionStatus = snapshot.val();
+      if (newMotionStatus !== null) {
+        setMotionStatus(newMotionStatus); // Update state with the value from Firebase
+      }
+    });
+
+    // Listen for changes in the 'temperature' value
+    const tempUnsubscribe = onValue(tempRef, (snapshot) => {
+      const newTemperature = snapshot.val();
+      if (newTemperature !== null) {
+        setTemperature(newTemperature); // Update state with the value from Firebase
+      }
+    });
+
+    // Listen for changes in the 'humidity' value
+    const humidityUnsubscribe = onValue(humidityRef, (snapshot) => {
+      const newHumidity = snapshot.val();
+      if (newHumidity !== null) {
+        setHumidity(newHumidity); // Update state with the value from Firebase
+      }
+    });
+
+    // Cleanup the listeners when the component unmounts
+    return () => {
+      lightsUnsubscribe();
+      motionUnsubscribe();
+      tempUnsubscribe();
+      humidityUnsubscribe();
+    };
+  }, []);
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -20,30 +90,46 @@ const DashboardScreen = ({ navigation }) => {
       <Text style={styles.welcomeText}>Welcome, Jester</Text>
 
       {/* Grid Section */}
-      <ScrollView 
-        contentContainerStyle={styles.scrollViewContent} 
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView contentContainerStyle={styles.scrollViewContent} showsVerticalScrollIndicator={false}>
         <View style={styles.grid}>
-          <TouchableOpacity style={styles.card}>
-          <Image source={require('../images/ilaw.png')} style={styles.image} />
-            <Text style={styles.cardText}>Lights Toggle</Text>
+          {/* Lights Toggle Card */}
+          <TouchableOpacity style={styles.card} onPress={toggleLights}>
+            <Image source={require('../images/ilaw.png')} style={styles.image} />
+
+            <Text style={styles.cardText}>Parking Lights {lightsOn ? 'ON' : 'OFF'}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.card, styles.activeCard]}>
-            <Icon name="home-outline" size={70} color="#fff" />
-            <Text style={styles.cardText}>Monitoring</Text>
+          <TouchableOpacity style={styles.card} onPress={toggleLights}>
+            <Image source={require('../images/ilaw.png')} style={styles.image} />
+
+            <Text style={styles.cardText}>House Lights {lightsOn ? 'ON' : 'OFF'}</Text>
           </TouchableOpacity>
+
           <TouchableOpacity style={styles.card}>
             <Icon name="lock-closed-outline" size={70} color="#fff" />
             <Text style={styles.cardText}>Door Toggle</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.card}>
-          <Image source={require('../images/apoy.png')} style={styles.image} />
-            <Text style={styles.cardText}>Temperature</Text>
+
+          {/* Monitoring Card with motion sensor status */}
+          <TouchableOpacity style={[styles.card, styles.activeCard]}>
+          <Image source={require('../images/HOUSE.png')} style={styles.image} />
+            <Text style={styles.cardText}>Monitoring</Text>
+            {/* Display motion status */}
+            <Text style={styles.motionStatusText}>
+             {motionStatus ? motionStatus : "No motion"}
+            </Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.card} >
-            <Icon name="   " size={70} color="#FF4500" />
-            <Text style={styles.cardText}>...</Text>
+
+          {/* Temperature and Humidity Card */}
+          <TouchableOpacity style={styles.card}>
+            <Image source={require('../images/apoy.png')} style={styles.image} />
+            <Text style={styles.cardText}>Temperature</Text>
+            {/* Display temperature and humidity */}
+            <Text style={styles.motionStatusText}>
+              Temperature: {temperature ? `${temperature}°C` : ""}
+            </Text>
+            <Text style={styles.motionStatusText}>
+              Humidity: {humidity ? `${humidity}%` : ""}
+            </Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -74,19 +160,19 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#121212',
-    
     paddingTop: 40,
   },
+  
+  scrollViewContent: {
+      height: '130%',
+    },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    
     width: '100%',
-    backgroundColor: '#1E1E1E', // Set your desired background color here
-    width: '100%', // Make the text container full width
+    backgroundColor: '#1E1E1E', 
     padding: 10,
-    
   },
   title: {
     fontSize: 20,
@@ -104,11 +190,11 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
     marginBottom: 20,
-    backgroundColor: '#1E1E1E', // Set your desired background color here
-    width: '100%', // Make the text container full width
+    backgroundColor: '#1E1E1E',
+    width: '100%',
     padding: 10,
     borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20, // Optional: Add padding for better appearance
+    borderBottomRightRadius: 20,
   },
   grid: {
     flexDirection: 'row',
@@ -124,49 +210,41 @@ const styles = StyleSheet.create({
     alignItems: 'left',
     marginBottom: 16,
     height: 180,
-    
-    
   },
-
   image: {
-    width: 70, // Set the width of the image
-    height: 70, // Set the height of the image
-    resizeMode: 'contain', // Ensure the image scales properly
+    width: 70,
+    height: 70,
+    resizeMode: 'contain',
   },
   activeCard: {
     borderWidth: 2,
     borderColor: '#3498DB',
   },
   cardText: {
-    marginTop: 30,
+    marginTop: 20,
     color: '#fff',
     fontSize: 20,
     fontWeight: '500',
+    textAlign: 'left',
+  },
+  motionStatusText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '400',
     textAlign: 'left',
   },
   bottomNav: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-    alignSelf: 'center',
     paddingVertical: 12,
     backgroundColor: '#1E1E1E',
     borderRadius: 20,
-    position: 'absolute',
+    
     bottom: 0,
     width: '95%',
-    marginBottom: 20, 
-    
+    marginBottom: 20,
     height: 70,
-    paddingHorizontal: 16,
-
-
-
-    shadowColor: '#000', // Shadow color
-    shadowOffset: { width: 0, height: -20 }, // Shadow offset
-    shadowOpacity: .5, // Shadow opacity
-    shadowRadius: 9, // Shadow radius
-    
   },
   addButton: {
     backgroundColor: '#FF6347',
@@ -176,12 +254,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: -50,
-    shadowColor: '#FF6347',
-    shadowOffset: { width: 0, height: 8 },
-    
-    shadowRadius: 10,
-    borderWidth: 10, // Width of the border
-    borderColor: '#121212', // Color of the border
   },
 });
 

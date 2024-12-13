@@ -5,7 +5,8 @@ import { getDatabase, ref, set, onValue } from 'firebase/database';
 import { database } from '../../firebaseConfig'; // Ensure the path is correct
 
 const DashboardScreen = ({ navigation }) => {
-  const [lightsOn, setLightsOn] = useState(false); // State to track the light status
+  const [lightsOn, setLightsOn] = useState(false);
+  const [parkingLightsOn, setParkingLightsOn] = useState(false); // State to track the light status
   const [motionStatus, setMotionStatus] = useState(""); // State to track motion sensor status
   const [temperature, setTemperature] = useState(null); // State to store temperature
   const [humidity, setHumidity] = useState(null); // State to store humidity
@@ -28,11 +29,22 @@ const DashboardScreen = ({ navigation }) => {
       });
   };
 
+   const toggleParkingLights = () => {
+    const newStatus = !parkingLightsOn;
+    setParkingLightsOn(newStatus);
+
+    const parkingLightsRef = ref(database, 'control/led2'); // Reference to 'control/parkingLights'
+    set(parkingLightsRef, newStatus)
+      .then(() => console.log('Parking lights status updated successfully!'))
+      .catch((error) => console.error('Error updating parking lights:', error));
+  };
+
   // Fetch data from Firebase (lights, motion, temperature, and humidity) when component mounts
   useEffect(() => {
     const lightsRef = ref(database, 'control/led'); // Reference to the 'led' path in Firebase
     const motionRef = ref(database, 'motion/status'); // Reference to the 'motion/status' path in Firebase
-    const tempRef = ref(database, 'sensorReading/temperature'); // Reference to the 'temperature' path in Firebase
+    const tempRef = ref(database, 'sensorReading/temperature');
+    const parkingLightsRef = ref(database, 'control/led2'); // Reference to the 'temperature' path in Firebase
     const humidityRef = ref(database, 'sensorReading/humidity'); // Reference to the 'humidity' path in Firebase
     
     // Listen for changes in the 'led' value
@@ -41,6 +53,11 @@ const DashboardScreen = ({ navigation }) => {
       if (newStatus !== null) {
         setLightsOn(newStatus); // Update state with the value from Firebase
       }
+    });
+
+    const parkingLightsUnsubscribe = onValue(parkingLightsRef, (snapshot) => {
+      const status = snapshot.val();
+      if (status !== null) setParkingLightsOn(status);
     });
 
     // Listen for changes in the 'motion/status' value
@@ -70,6 +87,7 @@ const DashboardScreen = ({ navigation }) => {
     // Cleanup the listeners when the component unmounts
     return () => {
       lightsUnsubscribe();
+      parkingLightsUnsubscribe();
       motionUnsubscribe();
       tempUnsubscribe();
       humidityUnsubscribe();
@@ -93,25 +111,27 @@ const DashboardScreen = ({ navigation }) => {
       <ScrollView contentContainerStyle={styles.scrollViewContent} showsVerticalScrollIndicator={false}>
         <View style={styles.grid}>
           {/* Lights Toggle Card */}
-          <TouchableOpacity style={styles.card} onPress={toggleLights}>
-            <Image source={require('../images/ilaw.png')} style={styles.image} />
 
-            <Text style={styles.cardText}>Parking Lights {lightsOn ? 'ON' : 'OFF'}</Text>
+          <TouchableOpacity style={styles.card} onPress={toggleParkingLights}>
+            <Image source={require('../images/ilaw.png')} style={styles.image} />
+            <Text style={styles.cardText}>Post Lights {parkingLightsOn ? 'ON' : 'OFF'}</Text>
           </TouchableOpacity>
+
+
+
+
+
           <TouchableOpacity style={styles.card} onPress={toggleLights}>
             <Image source={require('../images/ilaw.png')} style={styles.image} />
 
             <Text style={styles.cardText}>House Lights {lightsOn ? 'ON' : 'OFF'}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.card}>
-            <Icon name="lock-closed-outline" size={70} color="#fff" />
-            <Text style={styles.cardText}>Door Toggle</Text>
-          </TouchableOpacity>
+      
 
           {/* Monitoring Card with motion sensor status */}
           <TouchableOpacity style={[styles.card, styles.activeCard]}>
-          <Image source={require('../images/HOUSE.png')} style={styles.image} />
+          <Image source={require('../images/2.png')} style={styles.image} />
             <Text style={styles.cardText}>Monitoring</Text>
             {/* Display motion status */}
             <Text style={styles.motionStatusText}>
@@ -125,7 +145,7 @@ const DashboardScreen = ({ navigation }) => {
             <Text style={styles.cardText}>Temperature</Text>
             {/* Display temperature and humidity */}
             <Text style={styles.motionStatusText}>
-              Temperature: {temperature ? `${temperature}°C` : ""}
+              {temperature ? `${temperature}°C` : ""}
             </Text>
             <Text style={styles.motionStatusText}>
               Humidity: {humidity ? `${humidity}%` : ""}
